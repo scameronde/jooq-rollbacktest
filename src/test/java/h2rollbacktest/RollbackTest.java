@@ -5,7 +5,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import org.jooq.Record;
 import org.jooq.SQLDialect;
 import org.jooq.TransactionalRunnable;
 import org.jooq.exception.DataAccessException;
@@ -22,44 +21,52 @@ public class RollbackTest {
 
   @Before
   public void setup() {
-    setupDB();
+    withTransaction(configuration -> {
+      DSL.using(configuration)
+         .createTable("TEST")
+         .column("ID", SQLDataType.BIGINT.nullable(false))
+         .execute();
+      DSL.using(configuration)
+         .alterTable("TEST")
+         .add(DSL.constraint("PK").primaryKey("ID"))
+         .execute();
+    });
   }
 
   @After
   public void cleanup() {
-    cleanupDB();
+    withTransaction(configuration -> {
+      DSL.using(configuration)
+         .dropTable("TEST")
+         .execute();
+    });
   }
 
   @Test
   public void testDelete() {
     withTransaction(configuration -> {
-      DSL.using(configuration).query("insert into TEST (ID) values (1)").execute();
+      DSL.using(configuration)
+         .query("insert into TEST (ID) values (1)")
+         .execute();
     });
     withTransaction(configuration -> {
-      DSL.using(configuration).query("delete from TEST where ID=1").execute();
+      DSL.using(configuration)
+         .query("delete from TEST where ID=1")
+         .execute();
     });
   }
 
   @Test
   public void testDeleteAfterRollback() {
     withTransaction(configuration -> {
-      DSL.using(configuration).query("insert into TEST (ID) values (1)").execute();
+      DSL.using(configuration)
+         .query("insert into TEST (ID) values (1)")
+         .execute();
     });
     withTransaction(configuration -> {
-      DSL.using(configuration).query("insert into TEST (ID) values (1)").execute();
-    });
-  }
-
-  private void setupDB() {
-    withTransaction(configuration -> {
-      DSL.using(configuration).createTable("TEST").column("ID", SQLDataType.BIGINT.nullable(false)).execute();
-      DSL.using(configuration).alterTable("TEST").add(DSL.constraint("PK").primaryKey("ID")).execute();
-    });
-  }
-
-  private void cleanupDB() {
-    withTransaction(configuration -> {
-      DSL.using(configuration).dropTable("TEST").execute();
+      DSL.using(configuration)
+         .query("insert into TEST (ID) values (1)")
+         .execute();
     });
   }
 
